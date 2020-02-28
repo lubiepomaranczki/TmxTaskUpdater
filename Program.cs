@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Threading.Tasks;
 using Refit;
 using TmxTaskUpdater.Api;
@@ -14,11 +17,55 @@ namespace TmxTaskUpdater
 
         public static void Main(string[] args)
         {
-            Console.WriteLine("Start running TmxTaskUpdater! 🚧");
+            const string footballPracticePath = @"/Users/lukaszlawicki/Documents/Coding/FootballPractice";
 
-            MainAsync().GetAwaiter().GetResult();
+            var todos = new List<TodoTask>();
+            IList<FileInfo> csharpFileInfo = new List<FileInfo>();
 
-            Console.WriteLine("Ended running TmxTaskUpdater! 🦄");
+            string[] folders = Directory.GetDirectories(footballPracticePath, "*", SearchOption.AllDirectories);
+            foreach (var folder in folders)
+            {
+                var currentDirectory = new DirectoryInfo(folder);
+
+                foreach (var file in currentDirectory.GetFiles("*.cs"))
+                {
+                    csharpFileInfo.Add(file);
+                }
+            }
+
+            foreach (var file in csharpFileInfo)
+            {
+                using (StreamReader sr = new StreamReader(file.FullName))
+                {
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        if (line.ToLower().Contains("todo") && !line.ToLower().Contains("todownload"))
+                        {
+                            todos.Add(new TodoTask(line.Trim().Substring(line.Trim().ToLower().IndexOf("todo")), file.Name));
+                        }
+                    }
+                }
+            }
+
+            foreach (var todo in todos)
+            {
+                Console.WriteLine($"In {todo.FileName}: {todo.TodoComment}");
+            }
+
+            Console.WriteLine($"{todos.Count} TODOs");
+        }
+
+        public class TodoTask
+        {
+            public TodoTask(string todoComment, string file)
+            {
+                TodoComment = todoComment;
+                FileName = file;
+            }
+
+            public string TodoComment { get; }
+            public string FileName { get; }
         }
 
         static async Task MainAsync()
